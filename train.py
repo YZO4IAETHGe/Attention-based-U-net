@@ -30,10 +30,10 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     ) = prepare_data(train_size, validation_size, test_size)
 
     train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
 
     validation_dataset = TensorDataset(X_validation_tensor, y_validation_tensor)
-    validation_loader = DataLoader(validation_dataset, batch_size=4, shuffle=False)
+    validation_loader = DataLoader(validation_dataset, batch_size=4, shuffle=True)
 
     model = U_Net(1, 5)
     model.to(device)
@@ -105,7 +105,7 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
 
     # Test on the test set
     test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=4, shuffle=True)
 
     model.eval()
     test_loss = 0
