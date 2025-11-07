@@ -6,8 +6,7 @@ import torch
 from torch import nn
 from sklearn.model_selection import train_test_split
 from U_Net import U_Net
-from losses import calc_loss
-
+from losses import combined_loss, convert_mask_to_class
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 X = []
@@ -54,21 +53,22 @@ train_loader  = DataLoader(train_dataset, batch_size=4, shuffle=True)
 
 
 
-model = U_Net(1,1)
+model = U_Net(1,5)
 model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(),lr=1e-4)
-criterion = calc_loss
+criterion = combined_loss
 
 num_batches = len(train_loader)
-num_epochs = 1
-
+num_epochs = 10
+losses_list = []
 for epoch in range(num_epochs):
+    losses = 0
     for i, (batch_X, batch_y) in enumerate(train_loader, 1):
 
      
         batch_X = batch_X.to(device) 
-        batch_y = batch_y.to(device)
+        batch_y = convert_mask_to_class(batch_y).to(device)
 
         outputs = model(batch_X)
         loss = criterion(outputs, batch_y)
@@ -76,12 +76,17 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
         
-
-        # Calcul du pourcentage
-        percent_done = (i / num_batches) * 100
-        print(f"Epoch {epoch+1}/{num_epochs} - Batch {i}/{num_batches}, Loss: {loss.item():.4f}, Progress: {percent_done:.1f}%")
-
-
+        losses += loss.item()
+    
+    avg_loss = losses / num_batches
+    print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
+    losses_list.append(avg_loss)
+        
     torch.save(model.state_dict(), "model_weights.pth")
 
 
+plt.plot(range(1, num_epochs + 1), losses_list)
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("Training Loss over Epochs")
+plt.show()

@@ -3,8 +3,8 @@ from torchsummary import summary
 import nibabel as nib
 import matplotlib.pyplot as plt
 import torch
-
-Unet = U_Net(1,1)
+from losses import predict_mask
+Unet = U_Net(1,5)
 
 Unet.load_state_dict(torch.load("model_weights.pth", map_location=torch.device('cpu')))
 
@@ -18,7 +18,11 @@ input= img.get_fdata()
 img = nib.load("data/MR-dataset/39-T1DUAL-mask.nii.gz")
 output = img.get_fdata()
 
-couche = 15
+couche = 10
+import numpy as np
+valeurs_uniques = np.unique(output)
+
+print(valeurs_uniques)
 
 input1 = torch.tensor(input, dtype=torch.float32)
 input1 = input1.permute(2, 0, 1)
@@ -28,9 +32,9 @@ output = output.permute(2, 0, 1)
 output = output[couche,:,:]
 input1 = (input1.unsqueeze(0)).unsqueeze(0)
 print(input1.shape)
-output_hat = Unet(input1)
-print(output_hat.shape)
+output_hat = predict_mask(Unet,input1)
 output_hat = output_hat.squeeze()
+print(output_hat.shape)
 output_hat = output_hat.detach().numpy()
 input1 = input1.squeeze()
 
