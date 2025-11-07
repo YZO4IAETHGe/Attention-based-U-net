@@ -117,3 +117,15 @@ def prepare_data(train_size, validation_size, test_size):
         y_validation_tensor,
         y_test_tensor,
     )
+
+
+def accuracy(output, target):
+    if output.shape != target.shape:
+        raise ValueError(
+            f"Dimensions incompatibles : output.shape={output.shape}, target.shape={target.shape}"
+        )
+
+    # Exemple de calcul d'accuracy simple
+    correct = (output == target).sum().item()
+    total = target.numel()
+    return correct / total
