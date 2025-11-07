@@ -1,8 +1,6 @@
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from torch import nn
-from sklearn.model_selection import train_test_split
 from U_Net import U_Net
 from utils import prepare_data, accuracy
 from time import time
@@ -145,4 +143,4 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     plt.show()
 
 
-train_2D(14, 2, 4, 1, lr=1e-4)
+train_2D(train_size=14, validation_size=2, test_size=4, num_epochs=10, lr=1e-4)
