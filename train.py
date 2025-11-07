@@ -4,9 +4,10 @@ from torch.utils.data import TensorDataset, DataLoader
 from torch import nn
 from sklearn.model_selection import train_test_split
 from U_Net import U_Net
-from losses import calc_loss
-from time import time
 from utils import prepare_data, accuracy
+from time import time
+from utils import prepare_data
+from losses import convert_mask_to_class, combined_loss
 
 
 def train_2D(train_size, validation_size, test_size, num_epochs, lr):
@@ -39,7 +40,7 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr)
-    criterion = calc_loss
+    criterion = combined_loss
 
     num_batches = len(train_loader)
 
@@ -60,7 +61,7 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
                 tm = time()
 
                 batch_X = batch_X.to(device)
-                batch_y = batch_y.to(device)
+                batch_y = convert_mask_to_class(batch_y).to(device)
 
                 outputs = model(batch_X)
                 loss = criterion(outputs, batch_y)
@@ -68,12 +69,6 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
-                # Calcul du pourcentage
-                percent_done = (i / num_batches) * 100
-                print(
-                    f"Epoch {epoch+1}/{num_epochs} - Batch {i}/{num_batches}, Loss: {loss.item():.4f}, Progress: {percent_done:.1f}%, Time: {time() - tm}"
-                )
 
             train_loss.append(train_losses_on_epoch / num_batches)
 
@@ -83,7 +78,9 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
 
             with torch.no_grad():
                 for val_X, val_y in validation_loader:
-                    val_X, val_y = val_X.to(device), val_y.to(device)
+                    val_X, val_y = val_X.to(device), convert_mask_to_class(val_y).to(
+                        device
+                    )
                     outputs = model(val_X)
                     val_accuracy += accuracy(outputs, val_y)
 
