@@ -5,7 +5,8 @@ from U_Net import U_Net
 from utils import prepare_data, accuracy
 from time import time
 from utils import prepare_data
-from losses import convert_mask_to_class, combined_loss
+from losses import convert_mask_to_class, combined_loss, predict_mask
+import numpy as np
 
 
 def train_2D(train_size, validation_size, test_size, num_epochs, lr):
@@ -42,7 +43,7 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
 
     num_batches = len(train_loader)
 
-    best_accuracy = 0
+    best_val_loss = np.inf
 
     nb_no_upgrade = 0  # We store the number of epochs since when the accuracy on the validation set did not improve
     # if we don't improve for 3 epochs, we stop the process
@@ -50,9 +51,10 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     train_loss = []
     train_losses_on_epoch = 0
 
-    validation_accuracies = []
+    validation_losses = []
 
     for epoch in range(num_epochs):
+        train_losses_on_epoch = 0
         if nb_no_upgrade < 3:
             for i, (batch_X, batch_y) in enumerate(train_loader, 1):
 
@@ -63,7 +65,7 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
 
                 outputs = model(batch_X)
                 loss = criterion(outputs, batch_y)
-                train_losses_on_epoch += loss.item
+                train_losses_on_epoch += loss.item()
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -72,7 +74,7 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
 
             # Validation après chaque epoch
             model.eval()
-            val_accuracy = 0
+            val_loss = 0
 
             with torch.no_grad():
                 for val_X, val_y in validation_loader:
@@ -80,19 +82,20 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
                         device
                     )
                     outputs = model(val_X)
-                    val_accuracy += accuracy(outputs, val_y)
+                    val_loss += criterion(outputs, val_y).item()
 
-            val_accuracy /= len(validation_loader)
-            validation_accuracies.append(val_accuracy)
-            print(f"Epoch {epoch+1} validation accuracy: {val_accuracy:.4f}")
+            val_loss /= len(validation_loader)
+            validation_losses.append(val_loss)
+            print(f"Epoch {epoch+1} validation loss: {val_loss:.4f}")
+            print(f"Epoch {epoch+1} training loss: {train_losses_on_epoch / num_batches:.4f}")
             model.train()
 
             print(
-                f"Previous best accuracy on validation set : {best_accuracy:.4f} | Accuracy on validation set at this epoch : {val_accuracy:.4f}"
+                f"Previous best loss on validation set : {best_val_loss:.4f} | Loss on validation set at this epoch : {val_loss:.4f}"
             )
 
-            if val_accuracy > best_accuracy:
-                best_accuracy = val_accuracy
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
                 torch.save(model.state_dict(), "model_weights.pth")
 
                 nb_no_upgrade = 0
@@ -105,16 +108,16 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False)
 
     model.eval()
-    test_accuracy = 0
+    test_loss = 0
 
     with torch.no_grad():
         for test_X, test_y in test_loader:
-            test_X, test_y = test_X.to(device), test_y.to(device)
+            test_X, test_y = test_X.to(device), convert_mask_to_class(test_y).to(device)
             outputs = model(test_X)
-            test_accuracy += accuracy(outputs, test_y)
+            test_loss += criterion(outputs, test_y).item()
 
-    test_accuracy /= len(test_loader)
-    print(f"Accuracy on test dataset: {test_accuracy:.4f}")
+    test_loss /= len(test_loader)
+    print(f"Loss on test dataset: {test_loss:.4f}")
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
@@ -125,17 +128,17 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     ax1.legend()
     ax1.grid(True)
 
-    # Deuxième subplot : Validation Accuracy
+    # Deuxième subplot : Validation Loss
     ax2.plot(
         range(num_epochs),
-        validation_accuracies,
+        validation_losses,
         marker="o",
         color="blue",
-        label="Validation Accuracy",
+        label="Validation Loss",
     )
     ax2.set_xlabel("Epoch")
-    ax2.set_ylabel("Accuracy")
-    ax2.set_title("Validation Accuracy per Epoch")
+    ax2.set_ylabel("Loss")
+    ax2.set_title("Validation Loss per Epoch")
     ax2.legend()
     ax2.grid(True)
 
