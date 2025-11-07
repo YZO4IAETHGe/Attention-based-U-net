@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from segmentation_models_pytorch.losses import DiceLoss
 
 
 def dice_loss(pred, target, smooth=1.0):
@@ -19,11 +20,15 @@ def dice_loss(pred, target, smooth=1.0):
 
 
 def calc_loss(pred, target, bce_weight=0.5):
-    # BCE avec logits (avant sigmoid)
-    bce = F.binary_cross_entropy_with_logits(pred, target)
+
+    target = target.squeeze(1)
+
+    loss = F.cross_entropy(pred, target)
 
     # Dice loss (avec sigmoid interne)
-    dice = dice_loss(pred, target)
+    # dice = dice_loss(pred, target)
+    dice = DiceLoss(mode="multiclass")
+    dice_loss_value = dice(pred, target)
 
-    loss = bce * bce_weight + dice * (1 - bce_weight)
+    loss = loss * bce_weight + dice_loss_value * (1 - bce_weight)
     return loss
