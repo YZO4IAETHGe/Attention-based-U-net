@@ -4,9 +4,9 @@ from torch.utils.data import TensorDataset, DataLoader
 from torch import nn
 from sklearn.model_selection import train_test_split
 from U_Net import U_Net
-from losses import calc_loss
 from time import time
 from utils import prepare_data
+from losses import convert_mask_to_class, combined_loss
 
 
 def train_2D(train_size, validation_size, test_size, num_epochs, lr):
@@ -36,31 +36,33 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr)
-    criterion = calc_loss
+    criterion = combined_loss
 
     num_batches = len(train_loader)
-
+    losses_list = []
     for epoch in range(num_epochs):
+        losses_epoch = 0
         for i, (batch_X, batch_y) in enumerate(train_loader, 1):
 
-            tm = time()
-
             batch_X = batch_X.to(device)
-            batch_y = batch_y.to(device)
+            batch_y = convert_mask_to_class(batch_y).to(device)
 
             outputs = model(batch_X)
             loss = criterion(outputs, batch_y)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            losses_epoch += loss.item()
 
-            # Calcul du pourcentage
-            percent_done = (i / num_batches) * 100
-            print(
-                f"Epoch {epoch+1}/{num_epochs} - Batch {i}/{num_batches}, Loss: {loss.item():.4f}, Progress: {percent_done:.1f}%, Time: {time() - tm}"
-            )
-
+        avg_loss = losses_epoch / num_batches
+        losses_list.append(avg_loss)
+        print(f"Epoch {epoch+1}/{num_epochs} completed. Average Loss: {avg_loss:.4f}")
         torch.save(model.state_dict(), "model_weights.pth")
+        
+    plt.plot(range(1, num_epochs + 1), losses_list)
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title("Training Loss over Epochs")
+    plt.show()
 
-
-train_2D(14, 2, 4, 1, lr=1e-4)
+train_2D(14, 2, 4, 10, lr=1e-4)
