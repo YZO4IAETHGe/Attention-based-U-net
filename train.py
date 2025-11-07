@@ -58,7 +58,7 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
         losses_list.append(avg_loss)
         print(f"Epoch {epoch+1}/{num_epochs} completed. Average Loss: {avg_loss:.4f}")
         torch.save(model.state_dict(), "model_weights.pth")
-        
+
     plt.plot(range(1, num_epochs + 1), losses_list)
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
