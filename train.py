@@ -101,23 +101,3 @@ def test_2D(model,test_loader,name):
     print(f"Loss on test dataset: {test_loss:.4f}")
     print(f"Dice per class on test dataset: {dice_per_class_total / len(test_loader)}")
     return test_loss, dice_per_class_total / len(test_loader)
-
-
-
-# train_loss,validation_losses = train_2D(
-#     model=AttU_Net(1, 5),
-#     train_loader=train_loader,
-#     validation_loader=validation_loader,
-#     name ="attU_Net_weightstest",
-#     num_epochs=3,
-#     lr=1e-4,
-#     max_no_upgrade=100
-# )
-
-test_loss,dice_classes = test_2D(
-    model=U_Net(1, 5),
-    test_loader=test_loader,
-    name ="U_Net_weights30"
-)
-
-# graph(train_loss,validation_losses)
