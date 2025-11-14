@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 from models import U_Net, AttU_Net
 from utils import prepare_data, graph, convert_mask_to_class
-from losses import combined_loss
+from losses import combined_loss, dice_per_class
 import numpy as np
 
 
@@ -108,15 +108,18 @@ def test_2D(model,test_loader,name):
     model.load_state_dict(torch.load(name+".pth"))
     model.eval()
     test_loss = 0
+    dice_per_class_total = np.zeros((5,))
 
     with torch.no_grad():
         for test_X, test_y in test_loader:
             test_X, test_y = test_X.to(device), convert_mask_to_class(test_y).to(device)
             outputs = model(test_X)
             test_loss += criterion(outputs, test_y).item()
+            dice_per_class_total += dice_per_class(outputs, test_y).cpu().numpy()
     test_loss /= len(test_loader)
     print(f"Loss on test dataset: {test_loss:.4f}")
-    return test_loss
+    print(f"Dice per class on test dataset: {dice_per_class_total / len(test_loader)}")
+    return test_loss, dice_per_class_total / len(test_loader)
 
 
 
@@ -130,7 +133,7 @@ train_loss,validation_losses = train_2D(
     max_no_upgrade=100
 )
 
-test_loss = test_2D(
+test_loss,dice_classes = test_2D(
     model=AttU_Net(1, 5),
     test_loader=test_loader,
     name ="attU_Net_weightstest"
