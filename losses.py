@@ -5,7 +5,8 @@ from torch import nn
 ce_loss = torch.nn.CrossEntropyLoss()
 
 
-def dice_loss(pred, target, epsilon=1e-6):
+
+def dice_per_class(pred, target, epsilon=1e-6):
     """
     pred: logits (B, C, H, W)
     target: entiers (B, H, W)
@@ -21,7 +22,11 @@ def dice_loss(pred, target, epsilon=1e-6):
     intersection = torch.sum(pred_soft * target_onehot, dim=(0, 2, 3))
     cardinality = torch.sum(pred_soft + target_onehot, dim=(0, 2, 3))
     dice_per_class = (2.0 * intersection + epsilon) / (cardinality + epsilon)
-    return 1 - dice_per_class.mean()
+    return dice_per_class
+
+def dice_loss(pred, target, epsilon=1e-6):
+    dice_class = dice_per_class(pred, target, epsilon)
+    return 1 - dice_class.mean()
 
 
 def combined_loss(pred, target, alpha=0.5):

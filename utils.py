@@ -35,18 +35,18 @@ def prepare_data(train_size, validation_size, test_size):
     # Keeping only the images for which we have the mask
     for i in range(40):
         try:
-            # data_y.append(
-            #     nib.load(f"data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
-            # )
-            # data_X.append(
-            #     nib.load(f"data/MR-dataset/{i+1:02d}-T1DUALin-src.nii.gz").get_fdata()
-            # )
             data_y.append(
-                nib.load(f"/content/drive/MyDrive/Cours/data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
+                nib.load(f"data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
             )
             data_X.append(
-                nib.load(f"/content/drive/MyDrive/Cours/data/MR-dataset/{i+1:02d}-T1DUALin-src.nii.gz").get_fdata()
+                nib.load(f"data/MR-dataset/{i+1:02d}-T1DUALin-src.nii.gz").get_fdata()
             )
+            #data_y.append(
+            #    nib.load(f"/content/drive/MyDrive/Cours/data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
+            #)
+            #data_X.append(
+            #    nib.load(f"/content/drive/MyDrive/Cours/data/MR-dataset/{i+1:02d}-T1DUALin-src.nii.gz").get_fdata()
+            #)
         except:
             pass
 
