@@ -1,14 +1,16 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 from models import U_Net
-from utils import prepare_data, graph
-from losses import convert_mask_to_class, combined_loss
+from utils import prepare_data, graph, convert_mask_to_class
+from losses import combined_loss
 import numpy as np
 
 
 
-def train_2D(model,name,train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max_no_upgrade=10):
+def train_2D(model, name, train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max_no_upgrade=10):
     """
+    model : Model we want to train
+    name : Name of the weights we will save
     train_size : Number of images we want to take in our train set
     validation_size : Number of images we want to take in our validation set
     test_size : Number of images we want to take in our test set

@@ -3,7 +3,7 @@ from torchsummary import summary
 import nibabel as nib
 import matplotlib.pyplot as plt
 import torch
-from losses import predict_mask
+from utils import predict_mask
 Unet = U_Net(1,5)
 
 Unet.load_state_dict(torch.load("model_weights70.pth", map_location=torch.device('cpu')))
