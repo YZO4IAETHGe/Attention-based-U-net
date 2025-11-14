@@ -115,17 +115,17 @@ def train_2D(model, name, train_size, validation_size, test_size, num_epochs=10,
     test_loss /= len(test_loader)
     print(f"Loss on test dataset: {test_loss:.4f}")
 
-    return train_loss, validation_losses,test_loss
+    return train_loss, validation_losses, test_loss
 
-train_loss,validation_losses, test_loss = train_2D(
-    model=AttU_Net(1, 5),
-    name ="attU_Net_weights10",
-    train_size=14,
-    validation_size=2,
-    test_size=4,
-    num_epochs=10,
-    lr=1e-4,
-    max_no_upgrade=100
-)
+# train_loss, validation_losses, test_loss = train_2D(
+#     model=U_Net(1, 5),
+#     name ="U_Net_weights10",
+#     train_size=14,
+#     validation_size=2,
+#     test_size=4,
+#     num_epochs=10,
+#     lr=1e-4,
+#     max_no_upgrade=100
+# )
 
-graph(train_loss,validation_losses)
+# graph(train_loss,validation_losses)
