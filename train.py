@@ -128,7 +128,7 @@ train_loss,validation_losses = train_2D(
     train_loader=train_loader,
     validation_loader=validation_loader,
     name ="attU_Net_weightstest",
-    num_epochs=3,
+    num_epochs=10,
     lr=1e-4,
     max_no_upgrade=100
 )
