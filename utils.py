@@ -35,11 +35,17 @@ def prepare_data(train_size, validation_size, test_size):
     # Keeping only the images for which we have the mask
     for i in range(40):
         try:
+            # data_y.append(
+            #     nib.load(f"data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
+            # )
+            # data_X.append(
+            #     nib.load(f"data/MR-dataset/{i+1:02d}-T1DUALin-src.nii.gz").get_fdata()
+            # )
             data_y.append(
-                nib.load(f"data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
+                nib.load(f"/content/drive/MyDrive/Cours/data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
             )
             data_X.append(
-                nib.load(f"data/MR-dataset/{i+1:02d}-T1DUALin-src.nii.gz").get_fdata()
+                nib.load(f"/content/drive/MyDrive/Cours/data/MR-dataset/{i+1:02d}-T1DUALin-src.nii.gz").get_fdata()
             )
         except:
             pass
@@ -119,6 +125,32 @@ def prepare_data(train_size, validation_size, test_size):
         y_test_tensor,
     )
 
+def convert_mask_to_class(mask):
+    """
+    mask: Tensor (B,1,H,W) avec valeurs dans [0, 80, 160, 240, 255]
+    retourne: Tensor (B,1,H,W) avec valeurs entières dans [0,4]
+    """
+    if mask.dim() == 4 and mask.shape[1] == 1:
+        mask_squeezed = mask.squeeze(1)  # devient (B,H,W)
+    else:
+        mask_squeezed = mask
+
+    mapping = torch.tensor([0.0, 80.0, 160.0, 240.0, 255.0], device=mask.device)
+    result = torch.zeros_like(mask_squeezed, dtype=torch.long)
+    for i, val in enumerate(mapping):
+        result[mask_squeezed == val] = i
+
+    return result.unsqueeze(1)  # remet le canal : (B,1,H,W)
+
+
+def predict_mask(model, x):
+    logits = model(x)
+    preds = torch.argmax(logits, dim=1)  # (B,H,W)
+    values = torch.tensor([0.0, 80.0, 160.0, 240.0, 255.0], device=preds.device)
+    gray_mask = values[preds]  # (B,H,W)
+    return gray_mask
+
+
 
 def accuracy(output, target):
     if output.shape != target.shape:
@@ -132,7 +164,7 @@ def accuracy(output, target):
     return correct / total
 
 def graph(train_loss,validation_losses):
-    
+
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
     # Premier subplot : Train Loss
@@ -157,4 +189,54 @@ def graph(train_loss,validation_losses):
     ax2.grid(True)
 
     plt.tight_layout()  # ajuste l'espacement pour éviter que les titres/labels se chevauchent
+    plt.show()
+
+def compare_predictions_ground_truth(model, weights_name, input_path, output_path):
+
+    model.load_state_dict(torch.load(weights_name, map_location = torch.device('cpu')))
+
+    # Charger le fichier .nii.gz
+    img = nib.load(input_path)
+    input= img.get_fdata()
+
+    img = nib.load(output_path)
+    output = img.get_fdata()
+
+    couche = 10
+    valeurs_uniques = np.unique(output)
+
+    print(valeurs_uniques)
+
+    input1 = torch.tensor(input, dtype=torch.float32)
+    input1 = input1.permute(2, 0, 1)
+    input1 = input1[couche,:,:]
+    output = torch.tensor(output, dtype=torch.float32)
+    output = output.permute(2, 0, 1)
+    output = output[couche,:,:]
+    input1 = (input1.unsqueeze(0)).unsqueeze(0)
+    print(input1.shape)
+    output_hat = predict_mask(model,input1)
+    output_hat = output_hat.squeeze()
+    print(output_hat.shape)
+    output_hat = output_hat.detach().numpy()
+    input1 = input1.squeeze()
+
+    print(input1.shape)
+    print(output_hat.shape)
+    print(output.shape)
+
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+
+    axes[0].imshow(input1[:, :], cmap="gray")
+    axes[0].set_title("in")
+
+    axes[1].imshow(output_hat[:, :], cmap="gray")
+    axes[1].set_title("Unet(input)")
+
+    axes[2].imshow(output[:, :], cmap="gray")
+    axes[2].set_title("out")
+
+    for ax in axes: ax.axis("off")
     plt.show()

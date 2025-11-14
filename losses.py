@@ -34,29 +34,3 @@ def combined_loss(pred, target, alpha=0.5):
     dice = dice_loss(pred, target_squeezed)
     ce = torch.nn.functional.cross_entropy(pred, target_squeezed)
     return alpha * dice + (1 - alpha) * ce
-
-
-def convert_mask_to_class(mask):
-    """
-    mask: Tensor (B,1,H,W) avec valeurs dans [0, 80, 160, 240, 255]
-    retourne: Tensor (B,1,H,W) avec valeurs entières dans [0,4]
-    """
-    if mask.dim() == 4 and mask.shape[1] == 1:
-        mask_squeezed = mask.squeeze(1)  # devient (B,H,W)
-    else:
-        mask_squeezed = mask
-
-    mapping = torch.tensor([0.0, 80.0, 160.0, 240.0, 255.0], device=mask.device)
-    result = torch.zeros_like(mask_squeezed, dtype=torch.long)
-    for i, val in enumerate(mapping):
-        result[mask_squeezed == val] = i
-
-    return result.unsqueeze(1)  # remet le canal : (B,1,H,W)
-
-
-def predict_mask(model, x):
-    logits = model(x)
-    preds = torch.argmax(logits, dim=1)  # (B,H,W)
-    values = torch.tensor([0.0, 80.0, 160.0, 240.0, 255.0], device=preds.device)
-    gray_mask = values[preds]  # (B,H,W)
-    return gray_mask
