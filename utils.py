@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import random
 from matplotlib import pyplot as plt
+import os
 
 
 def normalize(img, h, w):
@@ -18,7 +19,7 @@ def normalize(img, h, w):
         return pad[None, :, :]
 
 
-def prepare_data(train_size, validation_size, test_size, rand = False):
+def prepare_data(train_size, validation_size, data_path, rand = False):
     """
     To avoid bias, we aim to split the data at the patient level, ensuring that slices from the same patient
     do not appear in both the training and validation sets.
@@ -34,12 +35,15 @@ def prepare_data(train_size, validation_size, test_size, rand = False):
 
     # Keeping only the images for which we have the mask
     for i in range(40):
+
         try:
+            path = os.path.join(data_path, "MR-dataset", f"{i+1:02d}-T1DUAL-mask.nii.gz")
             data_y.append(
-                nib.load(f"data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
+                nib.load(path).get_fdata()
             )
+            path = os.path.join(data_path, "MR-dataset", f"{i+1:02d}-T1DUALin-src.nii.gz")
             data_X.append(
-                nib.load(f"data/MR-dataset/{i+1:02d}-T1DUALin-src.nii.gz").get_fdata()
+                nib.load(path).get_fdata()
             )
             #data_y.append(
             #    nib.load(f"/content/drive/MyDrive/Cours/data/MR-dataset/{i+1:02d}-T1DUAL-mask.nii.gz").get_fdata()
