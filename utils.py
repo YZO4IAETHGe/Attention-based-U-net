@@ -2,6 +2,7 @@ import nibabel as nib
 import numpy as np
 import torch
 import random
+from matplotlib import pyplot as plt
 
 
 def normalize(img, h, w):
@@ -79,16 +80,16 @@ def prepare_data(train_size, validation_size, test_size):
 
     # Normalization of the data
     for i in range(len(X_train)):
-        X_train[i] = normalize(X_train[i], 288, 288)
-        y_train[i] = normalize(y_train[i], 288, 288)
+        X_train[i] = normalize(X_train[i], 256, 256)
+        y_train[i] = normalize(y_train[i], 256, 256)
 
     for i in range(len(X_validation)):
-        X_validation[i] = normalize(X_validation[i], 288, 288)
-        y_validation[i] = normalize(y_validation[i], 288, 288)
+        X_validation[i] = normalize(X_validation[i], 256, 256)
+        y_validation[i] = normalize(y_validation[i], 256, 256)
 
     for i in range(len(X_test)):
-        X_test[i] = normalize(X_test[i], 288, 288)
-        y_test[i] = normalize(y_test[i], 288, 288)
+        X_test[i] = normalize(X_test[i], 256, 256)
+        y_test[i] = normalize(y_test[i], 256, 256)
 
     # Convert data to array
     X_train = np.array(X_train, dtype=np.float32)
@@ -129,3 +130,31 @@ def accuracy(output, target):
     correct = (output == target).sum().item()
     total = target.numel()
     return correct / total
+
+def graph(train_loss,validation_losses):
+    
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+
+    # Premier subplot : Train Loss
+    ax1.plot(range(len(train_loss)), train_loss, marker="o", color="red", label="Train Loss")
+    ax1.set_ylabel("Loss")
+    ax1.set_title("Train Loss per Epoch")
+    ax1.legend()
+    ax1.grid(True)
+
+    # Deuxième subplot : Validation Loss
+    ax2.plot(
+        range(len(validation_losses)),
+        validation_losses,
+        marker="o",
+        color="blue",
+        label="Validation Loss",
+    )
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Loss")
+    ax2.set_title("Validation Loss per Epoch")
+    ax2.legend()
+    ax2.grid(True)
+
+    plt.tight_layout()  # ajuste l'espacement pour éviter que les titres/labels se chevauchent
+    plt.show()

@@ -9,7 +9,7 @@ from losses import convert_mask_to_class, combined_loss, predict_mask
 import numpy as np
 
 
-def train_2D(train_size, validation_size, test_size, num_epochs, lr):
+def train_2D(train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max_no_upgrade=10):
     """
     train_size : Number of images we want to take in our train set
     validation_size : Number of images we want to take in our validation set
@@ -55,7 +55,7 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
 
     for epoch in range(num_epochs):
         train_losses_on_epoch = 0
-        if nb_no_upgrade < 3:
+        if nb_no_upgrade < max_no_upgrade:
             for i, (batch_X, batch_y) in enumerate(train_loader, 1):
 
                 tm = time()
@@ -119,31 +119,6 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     test_loss /= len(test_loader)
     print(f"Loss on test dataset: {test_loss:.4f}")
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    return train_loss, validation_losses
 
-    # Premier subplot : Train Loss
-    ax1.plot(range(num_epochs), train_loss, marker="o", color="red", label="Train Loss")
-    ax1.set_ylabel("Loss")
-    ax1.set_title("Train Loss per Epoch")
-    ax1.legend()
-    ax1.grid(True)
-
-    # Deuxième subplot : Validation Loss
-    ax2.plot(
-        range(num_epochs),
-        validation_losses,
-        marker="o",
-        color="blue",
-        label="Validation Loss",
-    )
-    ax2.set_xlabel("Epoch")
-    ax2.set_ylabel("Loss")
-    ax2.set_title("Validation Loss per Epoch")
-    ax2.legend()
-    ax2.grid(True)
-
-    plt.tight_layout()  # ajuste l'espacement pour éviter que les titres/labels se chevauchent
-    plt.show()
-
-
-train_2D(train_size=14, validation_size=2, test_size=4, num_epochs=10, lr=1e-4)
+train_loss,validation_losses, test_loss = train_2D(train_size=14, validation_size=2, test_size=4, num_epochs=10, lr=1e-4, max_no_upgrade=10)

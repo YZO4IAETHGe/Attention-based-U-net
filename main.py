@@ -6,16 +6,16 @@ import torch
 from losses import predict_mask
 Unet = U_Net(1,5)
 
-Unet.load_state_dict(torch.load("model_weights.pth", map_location=torch.device('cpu')))
+Unet.load_state_dict(torch.load("model_weights70.pth", map_location=torch.device('cpu')))
 
 
 
 
 # Charger le fichier .nii.gz
-img = nib.load("data/MR-dataset/39-T1DUALin-src.nii.gz")
+img = nib.load("data/MR-dataset/34-T1DUALin-src.nii.gz")
 input= img.get_fdata()
 
-img = nib.load("data/MR-dataset/39-T1DUAL-mask.nii.gz")
+img = nib.load("data/MR-dataset/34-T1DUAL-mask.nii.gz")
 output = img.get_fdata()
 
 couche = 10
