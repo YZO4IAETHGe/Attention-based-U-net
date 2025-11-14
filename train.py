@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from models import U_Net
+from models import U_Net, AttU_Net
 from utils import prepare_data, graph
 from losses import convert_mask_to_class, combined_loss
 import numpy as np
@@ -113,11 +113,11 @@ def train_2D(model,name,train_size, validation_size, test_size, num_epochs=10, l
     test_loss /= len(test_loader)
     print(f"Loss on test dataset: {test_loss:.4f}")
 
-    return train_loss, validation_losses
+    return train_loss, validation_losses,test_loss
 
 train_loss,validation_losses, test_loss = train_2D(
-    model=U_Net(1, 5),
-    name ="model_weights",
+    model=AttU_Net(1, 5),
+    name ="attU_Net_weights10",
     train_size=14,
     validation_size=2,
     test_size=4,
