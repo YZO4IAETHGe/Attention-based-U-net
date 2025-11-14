@@ -7,7 +7,7 @@ import numpy as np
 
 
 
-def train_2D(model,train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max_no_upgrade=10):
+def train_2D(model,name,train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max_no_upgrade=10):
     """
     train_size : Number of images we want to take in our train set
     validation_size : Number of images we want to take in our validation set
@@ -90,7 +90,7 @@ def train_2D(model,train_size, validation_size, test_size, num_epochs=10, lr=1e-
 
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                torch.save(model.state_dict(), "model_weights.pth")
+                torch.save(model.state_dict(), name+".pth")
 
                 nb_no_upgrade = 0
 
@@ -117,6 +117,7 @@ def train_2D(model,train_size, validation_size, test_size, num_epochs=10, lr=1e-
 
 train_loss,validation_losses, test_loss = train_2D(
     model=U_Net(1, 5),
+    name ="model_weights",
     train_size=14,
     validation_size=2,
     test_size=4,
