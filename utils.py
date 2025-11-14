@@ -60,7 +60,7 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
         random.seed(42)
     # Shuffle the indices
     random.shuffle(indices)
-    print(indices)
+    
     # Get random indices for the separation of the data
     train_idx = indices[:train_size]
     val_idx = indices[train_size : train_size + validation_size]
