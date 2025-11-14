@@ -18,7 +18,7 @@ def normalize(img, h, w):
         return pad[None, :, :]
 
 
-def prepare_data(train_size, validation_size, test_size,random = False):
+def prepare_data(train_size, validation_size, test_size, rand = False):
     """
     To avoid bias, we aim to split the data at the patient level, ensuring that slices from the same patient
     do not appear in both the training and validation sets.
@@ -52,11 +52,11 @@ def prepare_data(train_size, validation_size, test_size,random = False):
 
     # Get all the indices of the data
     indices = list(range(len(data_X)))
-    if random:
+    if not(rand):
         random.seed(42)
     # Shuffle the indices
     random.shuffle(indices)
-
+    print(indices)
     # Get random indices for the separation of the data
     train_idx = indices[:train_size]
     val_idx = indices[train_size : train_size + validation_size]
