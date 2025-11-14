@@ -1,4 +1,4 @@
-from U_Net import U_Net
+from models import U_Net
 from torchsummary import summary
 import nibabel as nib
 import matplotlib.pyplot as plt

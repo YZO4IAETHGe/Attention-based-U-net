@@ -1,15 +1,13 @@
-import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from U_Net import U_Net
-from utils import prepare_data, accuracy
-from time import time
-from utils import prepare_data
-from losses import convert_mask_to_class, combined_loss, predict_mask
+from models import U_Net
+from utils import prepare_data, graph
+from losses import convert_mask_to_class, combined_loss
 import numpy as np
 
 
-def train_2D(train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max_no_upgrade=10):
+
+def train_2D(model,train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max_no_upgrade=10):
     """
     train_size : Number of images we want to take in our train set
     validation_size : Number of images we want to take in our validation set
@@ -35,7 +33,6 @@ def train_2D(train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max
     validation_dataset = TensorDataset(X_validation_tensor, y_validation_tensor)
     validation_loader = DataLoader(validation_dataset, batch_size=4, shuffle=True)
 
-    model = U_Net(1, 5)
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr)
@@ -49,7 +46,6 @@ def train_2D(train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max
     # if we don't improve for 3 epochs, we stop the process
 
     train_loss = []
-    train_losses_on_epoch = 0
 
     validation_losses = []
 
@@ -57,8 +53,6 @@ def train_2D(train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max
         train_losses_on_epoch = 0
         if nb_no_upgrade < max_no_upgrade:
             for i, (batch_X, batch_y) in enumerate(train_loader, 1):
-
-                tm = time()
 
                 batch_X = batch_X.to(device)
                 batch_y = convert_mask_to_class(batch_y).to(device)
@@ -121,4 +115,14 @@ def train_2D(train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max
 
     return train_loss, validation_losses
 
-train_loss,validation_losses, test_loss = train_2D(train_size=14, validation_size=2, test_size=4, num_epochs=10, lr=1e-4, max_no_upgrade=10)
+train_loss,validation_losses, test_loss = train_2D(
+    model=U_Net(1, 5),
+    train_size=14,
+    validation_size=2,
+    test_size=4,
+    num_epochs=10,
+    lr=1e-4,
+    max_no_upgrade=100
+)
+
+graph(train_loss,validation_losses)
