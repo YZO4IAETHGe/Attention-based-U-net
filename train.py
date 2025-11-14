@@ -1,14 +1,13 @@
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from U_Net import U_Net
+from models import U_Net
 from utils import prepare_data, accuracy
-from time import time
 from utils import prepare_data
 from losses import convert_mask_to_class, combined_loss
 
 
-def train_2D(train_size, validation_size, test_size, num_epochs, lr):
+def train_2D(model, train_size, validation_size, test_size, num_epochs, lr):
     """
     train_size : Number of images we want to take in our train set
     validation_size : Number of images we want to take in our validation set
@@ -34,7 +33,6 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     validation_dataset = TensorDataset(X_validation_tensor, y_validation_tensor)
     validation_loader = DataLoader(validation_dataset, batch_size=4, shuffle=False)
 
-    model = U_Net(1, 5)
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr)
@@ -48,15 +46,13 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     # if we don't improve for 3 epochs, we stop the process
 
     train_loss = []
-    train_losses_on_epoch = 0
 
     validation_accuracies = []
 
     for epoch in range(num_epochs):
         if nb_no_upgrade < 3:
+            train_losses_on_epoch = 0
             for i, (batch_X, batch_y) in enumerate(train_loader, 1):
-
-                tm = time()
 
                 batch_X = batch_X.to(device)
                 batch_y = convert_mask_to_class(batch_y).to(device)
@@ -143,4 +139,11 @@ def train_2D(train_size, validation_size, test_size, num_epochs, lr):
     plt.show()
 
 
-train_2D(train_size=14, validation_size=2, test_size=4, num_epochs=10, lr=1e-4)
+train_2D(
+    model=U_Net(1, 5),
+    train_size=14,
+    validation_size=2,
+    test_size=4,
+    num_epochs=10,
+    lr=1e-4,
+)
