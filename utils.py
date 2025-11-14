@@ -238,10 +238,10 @@ def compare_predictions_ground_truth(model, weights_name, input_path, output_pat
     axes[0].set_title("in")
 
     axes[1].imshow(output_hat[:, :], cmap="gray")
-    axes[1].set_title("Unet(input)")
+    axes[1].set_title("Predicted output")
 
     axes[2].imshow(output[:, :], cmap="gray")
-    axes[2].set_title("out")
+    axes[2].set_title("Ground truth output")
 
     for ax in axes: ax.axis("off")
     plt.show()
