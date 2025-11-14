@@ -1,26 +1,7 @@
 import torch
-from torch.utils.data import TensorDataset, DataLoader
-from models import U_Net, AttU_Net
 from utils import prepare_data, graph, convert_mask_to_class
 from losses import combined_loss, dice_per_class
 import numpy as np
-
-
-(X_train_tensor,
-X_validation_tensor,
-X_test_tensor,
-y_train_tensor,
-y_validation_tensor,
-y_test_tensor) = prepare_data(train_size = 14, validation_size=2, test_size=4)
-
-train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
-train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-
-validation_dataset = TensorDataset(X_validation_tensor, y_validation_tensor)
-validation_loader = DataLoader(validation_dataset, batch_size=4, shuffle=True)
-
-test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
-test_loader = DataLoader(test_dataset, batch_size=4, shuffle=True)
 
 def train_2D(model,train_loader,validation_loader,name,num_epochs=10, lr=1e-4, max_no_upgrade=10):
     """
