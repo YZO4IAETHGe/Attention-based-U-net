@@ -1,13 +1,13 @@
-from models import U_Net
+from models import U_Net, AttU_Net
 from torchsummary import summary
 import nibabel as nib
 import matplotlib.pyplot as plt
 import torch
 from utils import predict_mask
 Unet = U_Net(1,5)
-
-Unet.load_state_dict(torch.load("model_weights70.pth", map_location=torch.device('cpu')))
-
+AttUnet =AttU_Net(1,5)
+Unet.load_state_dict(torch.load("model_weights10.pth", map_location=torch.device('cpu')))
+AttUnet.load_state_dict(torch.load("attU_Net_weights10.pth", map_location=torch.device('cpu')))
 
 
 
