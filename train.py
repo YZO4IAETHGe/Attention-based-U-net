@@ -6,8 +6,23 @@ from losses import convert_mask_to_class, combined_loss
 import numpy as np
 
 
+(X_train_tensor,
+X_validation_tensor,
+X_test_tensor,
+y_train_tensor,
+y_validation_tensor,
+y_test_tensor) = prepare_data(train_size = 14, validation_size=2, test_size=4)
 
-def train_2D(model,name,train_size, validation_size, test_size, num_epochs=10, lr=1e-4, max_no_upgrade=10):
+train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+
+validation_dataset = TensorDataset(X_validation_tensor, y_validation_tensor)
+validation_loader = DataLoader(validation_dataset, batch_size=4, shuffle=True)
+
+test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
+test_loader = DataLoader(test_dataset, batch_size=4, shuffle=True)
+
+def train_2D(model,train_loader,validation_loader,name,num_epochs=10, lr=1e-4, max_no_upgrade=10):
     """
     train_size : Number of images we want to take in our train set
     validation_size : Number of images we want to take in our validation set
@@ -17,21 +32,6 @@ def train_2D(model,name,train_size, validation_size, test_size, num_epochs=10, l
     """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    (
-        X_train_tensor,
-        X_validation_tensor,
-        X_test_tensor,
-        y_train_tensor,
-        y_validation_tensor,
-        y_test_tensor,
-    ) = prepare_data(train_size, validation_size, test_size)
-
-    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-
-    validation_dataset = TensorDataset(X_validation_tensor, y_validation_tensor)
-    validation_loader = DataLoader(validation_dataset, batch_size=4, shuffle=True)
 
     model.to(device)
 
@@ -97,10 +97,13 @@ def train_2D(model,name,train_size, validation_size, test_size, num_epochs=10, l
             else:
                 nb_no_upgrade += 1
 
-    # Test on the test set
-    test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=4, shuffle=True)
+    return train_loss, validation_losses
 
+def test_2D(model,test_loader,name):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    criterion = combined_loss
+    model.load_state_dict(torch.load(name+".pth"))
     model.eval()
     test_loss = 0
 
@@ -109,21 +112,26 @@ def train_2D(model,name,train_size, validation_size, test_size, num_epochs=10, l
             test_X, test_y = test_X.to(device), convert_mask_to_class(test_y).to(device)
             outputs = model(test_X)
             test_loss += criterion(outputs, test_y).item()
-
     test_loss /= len(test_loader)
     print(f"Loss on test dataset: {test_loss:.4f}")
+    return test_loss
 
-    return train_loss, validation_losses,test_loss
 
-train_loss,validation_losses, test_loss = train_2D(
+
+train_loss,validation_losses = train_2D(
     model=AttU_Net(1, 5),
-    name ="attU_Net_weights10",
-    train_size=14,
-    validation_size=2,
-    test_size=4,
-    num_epochs=10,
+    train_loader=train_loader,
+    validation_loader=validation_loader,
+    name ="attU_Net_weightstest",
+    num_epochs=3,
     lr=1e-4,
     max_no_upgrade=100
+)
+
+test_loss = test_2D(
+    model=AttU_Net(1, 5),
+    test_loader=test_loader,
+    name ="attU_Net_weightstest"
 )
 
 graph(train_loss,validation_losses)

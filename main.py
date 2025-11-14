@@ -7,7 +7,7 @@ from losses import predict_mask
 Unet = U_Net(1,5)
 AttUnet =AttU_Net(1,5)
 Unet.load_state_dict(torch.load("model_weights10.pth", map_location=torch.device('cpu')))
-AttUnet.load_state_dict(torch.load("attU_Net_weights10.pth", map_location=torch.device('cpu')))
+AttUnet.load_state_dict(torch.load("attU_Net_weights100.pth", map_location=torch.device('cpu')))
 
 
 
