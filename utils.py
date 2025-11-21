@@ -60,7 +60,7 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
         random.seed(42)
     # Shuffle the indices
     random.shuffle(indices)
-    
+
     # Get random indices for the separation of the data
     train_idx = indices[:train_size]
     val_idx = indices[train_size : train_size + validation_size]
@@ -245,3 +245,60 @@ def compare_predictions_ground_truth(model, weights_name, input_path, output_pat
 
     for ax in axes: ax.axis("off")
     plt.show()
+
+
+def predict_volume(model, weights_name, input_path):
+    """
+    Charge les poids, applique le modèle tranche par tranche et reconstruit un volume 3D.
+    Retourne (nifti_img, volume_numpy) :
+      - nifti_img : nib.Nifti1Image construit avec l'affine du fichier d'entrée
+      - volume_numpy : ndarray shape (H, W, D) avec les valeurs des masques (0,80,160,240,255)
+    """
+
+    # charger les poids sur CPU (sécurisé si pas de GPU disponible)
+    state = torch.load(weights_name, map_location=torch.device("cpu"))
+    model.load_state_dict(state)
+    model.eval()
+
+    # charger le volume d'entrée
+    img = nib.load(input_path)
+    data = img.get_fdata()  # typiquement (H, W, D)
+
+    if data.ndim < 3:
+        raise ValueError(f"Le volume attendu doit avoir au moins 3 dimensions, got {data.ndim}")
+
+    # On assume que les coupes sont sur l'axe 2 (comme dans le reste du code)
+    num_slices = data.shape[2]
+
+    volume_slices = []
+
+    # choisir le device du modèle (si le modèle reste sur CPU ce sera 'cpu')
+    try:
+        device = next(model.parameters()).device
+    except StopIteration:
+        device = torch.device("cpu")
+
+    for z in range(num_slices):
+        slice_2d = data[:, :, z]
+
+        # normaliser / centrer / pad comme dans le reste du pipeline
+        slice_norm = normalize(slice_2d, 256, 256)  # renvoie (1, H, W)
+
+        # convertir en tenseur shape (B,1,H,W)
+        x = torch.tensor(slice_norm, dtype=torch.float32).unsqueeze(0).to(device)  # (1,1,H,W)
+
+        # prédiction (utilise predict_mask qui appelle model(x) et fait argmax)
+        with torch.no_grad():
+            pred_gray = predict_mask(model, x)  # retourne (B,H,W) avec valeurs {0,80,...,255}
+
+        # convertir en numpy 2D et stocker
+        pred_np = pred_gray.squeeze(0).cpu().numpy()  # (H,W)
+        volume_slices.append(pred_np)
+
+    # empiler sur l'axe z pour reconstruire le volume (H, W, D)
+    volume = np.stack(volume_slices, axis=2)
+
+    # reconstruire une image nib avec la même affine que l'original (pratique pour sauvegarder)
+    nifti_out = nib.Nifti1Image(volume, img.affine)
+
+    return nifti_out, volume
