@@ -1,6 +1,6 @@
 import torch
-from utils import prepare_data, graph, convert_mask_to_class
-from losses import combined_loss, dice_per_class
+from utils import convert_mask_to_class
+from losses import combined_loss, dice_per_class, dice_per_class_3D
 import numpy as np
 
 def train_2D(model,train_loader,validation_loader,name,num_epochs=10, lr=1e-4, max_no_upgrade=10):
@@ -101,3 +101,23 @@ def test_2D(model,test_loader,name):
     print(f"Loss on test dataset: {test_loss:.4f}")
     print(f"Dice per class on test dataset: {dice_per_class_total / len(test_loader)}")
     return test_loss, dice_per_class_total / len(test_loader)
+
+
+def test_3D(model, X_test_3D, y_test_3D, name):
+   
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.load_state_dict(torch.load(name+".pth", map_location=device))
+    model.eval()
+  
+    dice = torch.zeros(5).to(device)
+    for i in range(len(X_test_3D)):
+        target = convert_mask_to_class(y_test_3D[i].to(device))
+        pred = model.forward_volume(X_test_3D[i].to(device))
+        dice += dice_per_class_3D(pred, target)
+    
+    return dice.cpu()/len(X_test_3D)
+
+
+
+

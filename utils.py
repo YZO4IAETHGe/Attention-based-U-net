@@ -4,7 +4,8 @@ import torch
 import random
 from matplotlib import pyplot as plt
 import os
-
+import ipywidgets as widgets
+from IPython.display import display, clear_output
 
 def normalize(img, h, w):
     if img.shape[0] > h:
@@ -17,7 +18,6 @@ def normalize(img, h, w):
         pad = np.zeros((h, w))
         pad[start_h : start_h + img.shape[0], start_w : start_w + img.shape[1]] = img
         return pad[None, :, :]
-
 
 def prepare_data(train_size, validation_size, data_path, rand = False):
     """
@@ -55,7 +55,7 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
             pass
 
     # Get all the indices of the data
-    indices = list(range(len(data_X)))
+    indices = np.array(range(len(data_X)))
     if not(rand):
         random.seed(42)
     # Shuffle the indices
@@ -72,8 +72,12 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
     y_validation = []
     X_test = []
     y_test = []
+    couche_test = []
+    X_test_3D =[]
+    y_test_3D = []
 
     # Split of the data
+    
     for i in train_idx:
         for j in range(data_X[i].shape[2]):
             X_train.append(data_X[i][:, :, j])
@@ -85,6 +89,7 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
             y_validation.append(data_y[i][:, :, j])
 
     for i in test_idx:
+        couche_test.append(data_X[i].shape[2])
         for j in range(data_X[i].shape[2]):
             X_test.append(data_X[i][:, :, j])
             y_test.append(data_y[i][:, :, j])
@@ -98,9 +103,24 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
         X_validation[i] = normalize(X_validation[i], 256, 256)
         y_validation[i] = normalize(y_validation[i], 256, 256)
 
+    couche = 0
+    j = 0
+    X_test_slices = []
+    y_test_slices = []
     for i in range(len(X_test)):
         X_test[i] = normalize(X_test[i], 256, 256)
         y_test[i] = normalize(y_test[i], 256, 256)
+        X_test_slices.append(X_test[i])
+        y_test_slices.append(y_test[i])
+        couche +=1
+        if couche_test[j] == couche:
+            X_test_3D.append(torch.tensor(np.stack(X_test_slices, axis=1).squeeze(0), dtype=torch.float32))
+            y_test_3D.append(torch.tensor(np.stack(y_test_slices, axis=1).squeeze(0), dtype=torch.float32))
+            X_test_slices = []
+            y_test_slices = []
+            couche = 0
+            j+=1
+
 
     # Convert data to array
     X_train = np.array(X_train, dtype=np.float32)
@@ -109,7 +129,7 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
     y_train = np.array(y_train, dtype=np.float32)
     y_validation = np.array(y_validation, dtype=np.float32)
     y_test = np.array(y_test, dtype=np.float32)
-
+   
     print("X_train.shape : ", X_train.shape)
     print("X_validation.shape : ", X_validation.shape)
     print("X_test.shape : ", X_test.shape)
@@ -128,35 +148,34 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
         y_train_tensor,
         y_validation_tensor,
         y_test_tensor,
+        X_test_3D,
+        y_test_3D
     )
 
 def convert_mask_to_class(mask):
     """
-    mask: Tensor (B,1,H,W) avec valeurs dans [0, 80, 160, 240, 255]
-    retourne: Tensor (B,1,H,W) avec valeurs entières dans [0,4]
+    mask: Tensor de n'importe quelle dimension contenant les valeurs [0, 80, 160, 240, 255]
+    retourne: Tensor de même shape contenant les classes [0,1,2,3,4]
     """
-    if mask.dim() == 4 and mask.shape[1] == 1:
-        mask_squeezed = mask.squeeze(1)  # devient (B,H,W)
-    else:
-        mask_squeezed = mask
 
     mapping = torch.tensor([0.0, 80.0, 160.0, 240.0, 255.0], device=mask.device)
-    result = torch.zeros_like(mask_squeezed, dtype=torch.long)
+
+    result = torch.zeros(mask.shape, dtype=torch.long, device=mask.device)
+
     for i, val in enumerate(mapping):
-        result[mask_squeezed == val] = i
+        result[mask == val] = i
 
-    return result.unsqueeze(1)  # remet le canal : (B,1,H,W)
+    return result
 
+def convert_logits_to_class(logits):
 
-def predict_mask(model, x):
-    logits = model(x)
-    preds = torch.argmax(logits, dim=1)  # (B,H,W)
-    values = torch.tensor([0.0, 80.0, 160.0, 240.0, 255.0], device=preds.device)
-    gray_mask = values[preds]  # (B,H,W)
-    return gray_mask
+    if logits.dim() == 4:
 
-
-
+        preds = torch.argmax(logits, dim=1)  # (B,H,W)
+        values = torch.tensor([0.0, 80.0, 160.0, 240.0, 255.0], device=preds.device)
+        gray_mask = values[preds]
+        return gray_mask
+    
 def accuracy(output, target):
     if output.shape != target.shape:
         raise ValueError(
@@ -207,45 +226,55 @@ def compare_predictions_ground_truth(model, weights_name, input_path, output_pat
     img = nib.load(output_path)
     output = img.get_fdata()
 
-    couche = 10
-    valeurs_uniques = np.unique(output)
+    input_tensor = torch.tensor(input, dtype=torch.float32)
+    input_tensor = input_tensor.permute(2, 0, 1)
+   
+    output_tensor = torch.tensor(output, dtype=torch.float32)
+    output_tensor = output_tensor.permute(2, 0, 1)
+   
+    output_hat = model.forward_volume(input_tensor)
 
-    print(valeurs_uniques)
-
-    input1 = torch.tensor(input, dtype=torch.float32)
-    input1 = input1.permute(2, 0, 1)
-    input1 = input1[couche,:,:]
-    output = torch.tensor(output, dtype=torch.float32)
-    output = output.permute(2, 0, 1)
-    output = output[couche,:,:]
-    input1 = (input1.unsqueeze(0)).unsqueeze(0)
-    print(input1.shape)
-    output_hat = predict_mask(model,input1)
-    output_hat = output_hat.squeeze()
+    print(type(output_hat))
     print(output_hat.shape)
+
+    output_hat = convert_logits_to_class(output_hat)
+
     output_hat = output_hat.detach().numpy()
-    input1 = input1.squeeze()
 
-    print(input1.shape)
-    print(output_hat.shape)
-    print(output.shape)
+    display_volumes(input_tensor, output_tensor, output_hat)
 
-
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-
-
-    axes[0].imshow(input1[:, :], cmap="gray")
-    axes[0].set_title("in")
-
-    axes[1].imshow(output_hat[:, :], cmap="gray")
-    axes[1].set_title("Predicted output")
-
-    axes[2].imshow(output[:, :], cmap="gray")
-    axes[2].set_title("Ground truth output")
-
-    for ax in axes: ax.axis("off")
-    plt.show()
-
+def display_volumes(volume1, volume2, volume3):
+    """
+    Affiche 3 volumes côte à côte avec un slider unique pour explorer les slices.
+    volume1, volume2, volume3 : np.array (D,H,W)
+    """
+    D = volume1.shape[0]
+    assert volume2.shape[0] == D and volume3.shape[0] == D, "Tous les volumes doivent avoir le même nombre de slices"
+    
+    def view_slice(idx):
+        clear_output(wait=True)
+        fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+        
+        axes[0].imshow(volume1[idx], cmap='gray', vmin=volume1.min(), vmax=volume1.max())
+        axes[0].set_title("input")
+        axes[0].axis('off')
+        
+        axes[1].imshow(volume2[idx], cmap='gray', vmin=volume2.min(), vmax=volume2.max())
+        axes[1].set_title("target")
+        axes[1].axis('off')
+        
+        axes[2].imshow(volume3[idx], cmap='gray', vmin=volume3.min(), vmax=volume3.max())
+        axes[2].set_title("prediction")
+        axes[2].axis('off')
+        
+        plt.show()
+        display(slice_slider)
+    
+    slice_slider = widgets.IntSlider(min=0, max=D-1, value=0, description='Slice')
+    slice_slider.observe(lambda change: view_slice(change['new']), names='value')
+    
+    # Affiche la première slice
+    view_slice(0)
 
 def predict_volume(model, weights_name, input_path):
     """
@@ -267,38 +296,19 @@ def predict_volume(model, weights_name, input_path):
     if data.ndim < 3:
         raise ValueError(f"Le volume attendu doit avoir au moins 3 dimensions, got {data.ndim}")
 
-    # On assume que les coupes sont sur l'axe 2 (comme dans le reste du code)
-    num_slices = data.shape[2]
-
-    volume_slices = []
-
     # choisir le device du modèle (si le modèle reste sur CPU ce sera 'cpu')
     try:
         device = next(model.parameters()).device
     except StopIteration:
         device = torch.device("cpu")
+    
+    data_tensor = torch.tensor(data, dtype=torch.float32).to(device)
+    data_tensor = data_tensor.permute(2, 0, 1)
 
-    for z in range(num_slices):
-        slice_2d = data[:, :, z]
+    logits = model.forward_volume(data_tensor)
 
-        # normaliser / centrer / pad comme dans le reste du pipeline
-        slice_norm = normalize(slice_2d, 256, 256)  # renvoie (1, H, W)
-
-        # convertir en tenseur shape (B,1,H,W)
-        x = torch.tensor(slice_norm, dtype=torch.float32).unsqueeze(0).to(device)  # (1,1,H,W)
-
-        # prédiction (utilise predict_mask qui appelle model(x) et fait argmax)
-        with torch.no_grad():
-            pred_gray = predict_mask(model, x)  # retourne (B,H,W) avec valeurs {0,80,...,255}
-
-        # convertir en numpy 2D et stocker
-        pred_np = pred_gray.squeeze(0).cpu().numpy()  # (H,W)
-        volume_slices.append(pred_np)
-
-    # empiler sur l'axe z pour reconstruire le volume (H, W, D)
-    volume = np.stack(volume_slices, axis=2)
-
-    # reconstruire une image nib avec la même affine que l'original (pratique pour sauvegarder)
+    volume = convert_logits_to_class(logits).cpu().numpy()
+    
     nifti_out = nib.Nifti1Image(volume, img.affine)
 
     return nifti_out, volume

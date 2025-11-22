@@ -39,3 +39,20 @@ def combined_loss(pred, target, alpha=0.5):
     dice = dice_loss(pred, target_squeezed)
     ce = torch.nn.functional.cross_entropy(pred, target_squeezed)
     return alpha * dice + (1 - alpha) * ce
+
+
+def dice_per_class_3D(pred, target, epsilon=1e-6):
+    """
+    pred: (C, C, H, W)
+    target: entiers (C, H, W)
+    """
+    num_classes = pred.shape[1]
+    pred_soft = F.softmax(pred, dim=1)
+
+    target_onehot = F.one_hot(target, num_classes).permute(0, 3, 1, 2).float()
+
+    intersection = torch.sum(pred_soft * target_onehot, dim = (0, 2, 3))
+    cardinality = torch.sum(pred_soft + target_onehot, dim = (0, 2, 3))
+    dice_per_class = (2.0 * intersection + epsilon) / (cardinality + epsilon)
+    
+    return dice_per_class

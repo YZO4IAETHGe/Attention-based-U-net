@@ -124,7 +124,19 @@ class U_Net(nn.Module):
 
         return out
 
+    @torch.no_grad()
+    def forward_volume(self,x):
 
+        if x.dim() == 3:
+            temp_out = []
+
+            for slice in range(x.shape[0]):
+                slice_output = self.forward(x[slice,:,:].unsqueeze(0).unsqueeze(0))
+                temp_out.append(slice_output.squeeze(0))
+            
+            out = torch.stack(temp_out, dim = 0)
+            return out
+    
 class Attention_block(nn.Module):
     """
     Attention Block
@@ -246,3 +258,18 @@ class AttU_Net(nn.Module):
         #  out = self.active(out)
 
         return out
+    
+    @torch.no_grad()
+    def forward_volume(self,x):
+
+        if x.dim() == 3:
+            temp_out = []
+
+            for slice in range(x.shape[0]):
+                slice_output = self.forward(x[slice,:,:].unsqueeze(0).unsqueeze(0))
+                temp_out.append(slice_output.squeeze(0))
+            
+            out = torch.stack(temp_out, dim = 0)
+            return out
+    
+
