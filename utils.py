@@ -6,6 +6,8 @@ from matplotlib import pyplot as plt
 import os
 import ipywidgets as widgets
 from IPython.display import display, clear_output
+import torch.nn.functional as F
+
 
 def normalize(img, h, w):
     if img.shape[0] > h:
@@ -312,3 +314,90 @@ def predict_volume(model, weights_name, input_path):
     nifti_out = nib.Nifti1Image(volume, img.affine)
 
     return nifti_out, volume
+
+def load_slice(input_path, slice_number):
+
+    nii = nib.load(input_path)
+    data = nii.get_fdata()  # (H,W,D)
+    slice2d = data[:,:,slice_number]
+
+    # Normalise et met au format (1,1,H,W)
+    image = torch.tensor(slice2d, dtype=torch.float32)
+    image = image.unsqueeze(0).unsqueeze(0)  # -> (1,1,H,W)
+
+    return image
+
+class GradCAM:
+    def __init__(self, model, target_layer):
+        self.model = model
+        self.target_layer = target_layer
+
+        self.gradients = None
+        self.activations = None
+
+        self._register_hooks()
+
+    def _register_hooks(self):
+        def forward_hook(module, input, output):
+            self.activations = output
+
+        def backward_hook(module, grad_in, grad_out):
+            self.gradients = grad_out[0]
+
+        self.target_layer.register_forward_hook(forward_hook)
+        self.target_layer.register_backward_hook(backward_hook)
+
+    def __call__(self, image, class_idx):
+        image = image.clone().detach().requires_grad_(True)
+
+        outputs = self.model(image)
+        probs = F.softmax(outputs, dim=1)
+        score = probs[:, class_idx].sum()
+
+        self.model.zero_grad()
+        score.backward()
+
+        # activation = (1, C, H', W')
+        act = self.activations
+        grad = self.gradients
+
+        # pondération moyenne des gradients
+        weights = grad.mean(dim=[2, 3], keepdim=True)
+
+        # somme pondérée des feature maps
+        cam = (weights * act).sum(dim=1).relu()
+
+        cam = cam - cam.min()
+        cam = cam / cam.max()
+
+        cam = F.interpolate(
+            cam.unsqueeze(0),
+            size=(image.shape[2], image.shape[3]),
+            mode='bilinear',
+            align_corners=False,
+        )
+
+        return cam.squeeze()
+
+def overlay_cam(image, cam):
+    img = image.squeeze().cpu().numpy()
+    hm = cam.detach().cpu().numpy()
+
+    plt.figure(figsize=(6,6))
+    plt.imshow(img, cmap="gray")
+    plt.imshow(hm, cmap="jet", alpha=0.45)
+    plt.axis("off")
+    plt.show()
+
+def saliency_map(model, image, class_idx):
+    image = image.clone().detach().requires_grad_(True)
+    model.eval()
+
+    outputs = model(image)
+    probs = F.softmax(outputs, dim=1)
+
+    score = probs[:, class_idx].sum()
+    score.backward()
+
+    grad = image.grad.abs().squeeze()
+    return grad
