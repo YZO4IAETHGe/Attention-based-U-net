@@ -4,8 +4,6 @@ from torch import nn
 
 ce_loss = torch.nn.CrossEntropyLoss()
 
-
-
 def dice_per_class(pred, target, epsilon=1e-6):
     """
     pred: logits (B, C, H, W)
@@ -54,5 +52,5 @@ def dice_per_class_3D(pred, target, epsilon=1e-6):
     intersection = torch.sum(pred_soft * target_onehot, dim = (0, 2, 3))
     cardinality = torch.sum(pred_soft + target_onehot, dim = (0, 2, 3))
     dice_per_class = (2.0 * intersection + epsilon) / (cardinality + epsilon)
-    
+
     return dice_per_class
