@@ -21,7 +21,7 @@ def normalize(img, h, w):
         pad[start_h : start_h + img.shape[0], start_w : start_w + img.shape[1]] = img
         return pad[None, :, :]
 
-def prepare_data(train_size, validation_size, data_path, rand = False):
+def prepare_data(train_size, validation_size, data_path, random_seed=None):
     """
     To avoid bias, we aim to split the data at the patient level, ensuring that slices from the same patient
     do not appear in both the training and validation sets.
@@ -58,8 +58,8 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
 
     # Get all the indices of the data
     indices = np.array(range(len(data_X)))
-    if not(rand):
-        random.seed(42)
+    if random_seed:
+        random.seed(random_seed)
     # Shuffle the indices
     random.shuffle(indices)
 
@@ -79,7 +79,7 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
     y_test_3D = []
 
     # Split of the data
-    
+
     for i in train_idx:
         for j in range(data_X[i].shape[2]):
             X_train.append(data_X[i][:, :, j])
@@ -131,7 +131,7 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
     y_train = np.array(y_train, dtype=np.float32)
     y_validation = np.array(y_validation, dtype=np.float32)
     y_test = np.array(y_test, dtype=np.float32)
-   
+
     print("X_train.shape : ", X_train.shape)
     print("X_validation.shape : ", X_validation.shape)
     print("X_test.shape : ", X_test.shape)
@@ -153,6 +153,35 @@ def prepare_data(train_size, validation_size, data_path, rand = False):
         X_test_3D,
         y_test_3D
     )
+
+def show_input_mask(input_path, output_path, slice_idx):
+
+    # Charger les fichiers NIfTI
+    img_in = nib.load(input_path)
+    input_vol = img_in.get_fdata()
+
+    img_out = nib.load(output_path)
+    output_vol = img_out.get_fdata()
+
+    # Extraire la même couche dans les deux volumes
+    input_slice = input_vol[:, :, slice_idx]
+    output_slice = output_vol[:, :, slice_idx]
+
+    # Affichage côte à côte
+    plt.figure(figsize=(10, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(input_slice, cmap='gray')
+    plt.title("Input")
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(output_slice, cmap='gray')
+    plt.title("Output")
+    plt.axis('off')
+
+    plt.show()
+
 
 def convert_mask_to_class(mask):
     """
@@ -177,7 +206,7 @@ def convert_logits_to_class(logits):
         values = torch.tensor([0.0, 80.0, 160.0, 240.0, 255.0], device=preds.device)
         gray_mask = values[preds]
         return gray_mask
-    
+
 def accuracy(output, target):
     if output.shape != target.shape:
         raise ValueError(
@@ -230,10 +259,10 @@ def compare_predictions_ground_truth(model, weights_name, input_path, output_pat
 
     input_tensor = torch.tensor(input, dtype=torch.float32)
     input_tensor = input_tensor.permute(2, 0, 1)
-   
+
     output_tensor = torch.tensor(output, dtype=torch.float32)
     output_tensor = output_tensor.permute(2, 0, 1)
-   
+
     output_hat = model.forward_volume(input_tensor)
 
     print(type(output_hat))
@@ -252,29 +281,29 @@ def display_volumes(volume1, volume2, volume3):
     """
     D = volume1.shape[0]
     assert volume2.shape[0] == D and volume3.shape[0] == D, "Tous les volumes doivent avoir le même nombre de slices"
-    
+
     def view_slice(idx):
         clear_output(wait=True)
         fig, axes = plt.subplots(1, 3, figsize=(12, 4))
-        
+
         axes[0].imshow(volume1[idx], cmap='gray', vmin=volume1.min(), vmax=volume1.max())
         axes[0].set_title("input")
         axes[0].axis('off')
-        
+
         axes[1].imshow(volume2[idx], cmap='gray', vmin=volume2.min(), vmax=volume2.max())
         axes[1].set_title("target")
         axes[1].axis('off')
-        
+
         axes[2].imshow(volume3[idx], cmap='gray', vmin=volume3.min(), vmax=volume3.max())
         axes[2].set_title("prediction")
         axes[2].axis('off')
-        
+
         plt.show()
         display(slice_slider)
-    
+
     slice_slider = widgets.IntSlider(min=0, max=D-1, value=0, description='Slice')
     slice_slider.observe(lambda change: view_slice(change['new']), names='value')
-    
+
     # Affiche la première slice
     view_slice(0)
 
@@ -303,14 +332,14 @@ def predict_volume(model, weights_name, input_path):
         device = next(model.parameters()).device
     except StopIteration:
         device = torch.device("cpu")
-    
+
     data_tensor = torch.tensor(data, dtype=torch.float32).to(device)
     data_tensor = data_tensor.permute(2, 0, 1)
 
     logits = model.forward_volume(data_tensor)
 
     volume = convert_logits_to_class(logits).cpu().numpy()
-    
+
     nifti_out = nib.Nifti1Image(volume, img.affine)
 
     return nifti_out, volume
@@ -387,6 +416,33 @@ def overlay_cam(image, cam):
     plt.imshow(img, cmap="gray")
     plt.imshow(hm, cmap="jet", alpha=0.45)
     plt.axis("off")
+    plt.show()
+
+def overlay_cam_multi(image, cams, titles=None):
+    """
+    Affiche côte à côte plusieurs CAMs (ou saliency maps)
+    en suivant le style de la fonction overlay_cam.
+
+    image : tensor de l'image (1,H,W)
+    cams  : liste de tensors de saliency maps
+    titles : liste de titres optionnels
+    """
+    img = image.squeeze().cpu().numpy()
+
+    n = len(cams)
+    plt.figure(figsize=(20,4))
+
+    for i in range(n):
+        cam = cams[i].detach().cpu().numpy()
+
+        plt.subplot(1, n, i+1)
+        plt.imshow(img, cmap="gray")
+        plt.imshow(cam, cmap="jet", alpha=0.45)
+        if titles is not None:
+            plt.title(titles[i])
+        plt.axis("off")
+
+    plt.tight_layout()
     plt.show()
 
 def saliency_map(model, image, class_idx):
