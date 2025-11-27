@@ -73,9 +73,9 @@ def hausdorff_distance(pred, target):
     class_idx: int
     """
     hd = torch.zeros(pred.shape[1])
+    pred_classes = torch.argmax(pred, dim=1)
     for class_idx in range(pred.shape[1]):
-        pred_classes = torch.argmax(pred, dim=1)
-
+        
         pred_contour = contour_volume(pred_classes.cpu().numpy(), class_idx)
         target_contour = contour_volume(target.cpu().numpy(), class_idx)
 
@@ -84,16 +84,16 @@ def hausdorff_distance(pred, target):
 
         if len(pred_points) == 0 or len(target_points) == 0:
             hd[class_idx] = np.inf
-            continue
 
-        tree_pred = cKDTree(pred_points)
-        tree_target = cKDTree(target_points)
+        else:
+            tree_pred = cKDTree(pred_points)
+            tree_target = cKDTree(target_points)
 
-        distances_pred_to_target, _ = tree_pred.query(target_points)
-        distances_target_to_pred, _ = tree_target.query(pred_points)
+            distances_target_to_pred, _ = tree_pred.query(target_points)
+            distances_pred_to_target, _ = tree_target.query(pred_points)
 
-        hausdorff_dist = max(distances_pred_to_target.max(), distances_target_to_pred.max())
-        hd[class_idx] = hausdorff_dist
+            hausdorff_dist = max(distances_pred_to_target.max(), distances_target_to_pred.max())
+            hd[class_idx] = hausdorff_dist
     return hd
 
 def ASSD(pred, target):
@@ -103,9 +103,9 @@ def ASSD(pred, target):
     class_idx: int
     """
     assd = torch.zeros(pred.shape[1])
+    pred_classes = torch.argmax(pred, dim=1)
     for class_idx in range(pred.shape[1]):
-        pred_classes = torch.argmax(pred, dim=1)
-
+        
         pred_contour = contour_volume(pred_classes.cpu().numpy(), class_idx)
         target_contour = contour_volume(target.cpu().numpy(), class_idx)
 
@@ -115,12 +115,13 @@ def ASSD(pred, target):
         if len(pred_points) == 0 or len(target_points) == 0:
             assd[class_idx] = np.inf
 
-        tree_pred = cKDTree(pred_points)
-        tree_target = cKDTree(target_points)
+        else:
+            tree_pred = cKDTree(pred_points)
+            tree_target = cKDTree(target_points)
 
-        distances_target_to_pred, _ = tree_pred.query(target_points)
-        distances_pred_to_target, _ = tree_target.query(pred_points)
+            distances_target_to_pred, _ = tree_pred.query(target_points)
+            distances_pred_to_target, _ = tree_target.query(pred_points)
 
-        assd_dist = (distances_pred_to_target.sum()/len(pred_points) + distances_target_to_pred.sum()/ (len(target_points))) / 2.0
-        assd[class_idx] = assd_dist
+            assd_dist = (distances_pred_to_target.sum() + distances_target_to_pred.sum())/ (len(pred_points) + len(target_points))
+            assd[class_idx] = assd_dist
     return assd

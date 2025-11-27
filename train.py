@@ -104,7 +104,6 @@ def test_2D(model,test_loader,name):
     print(f"Dice per class on test dataset: {dice_per_class_total / len(test_loader)}")
     return test_loss, dice_per_class_total / len(test_loader)
 
-
 def test_3D(model, X_test_3D, y_test_3D, name):
     
     device = torch.device("cpu")
