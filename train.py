@@ -1,6 +1,6 @@
 import torch
 from utils import convert_mask_to_class
-from losses import combined_loss, dice_per_class, dice_per_class_3D
+from losses import combined_loss, dice_per_class, dice_per_class_3D, hausdorff_distance, ASSD
 import numpy as np
 
 def train_2D(model,train_loader,validation_loader,name,num_epochs=10, lr=1e-4, max_no_upgrade=10):
@@ -83,11 +83,13 @@ def train_2D(model,train_loader,validation_loader,name,num_epochs=10, lr=1e-4, m
     return train_loss, validation_losses
 
 def test_2D(model,test_loader,name):
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     criterion = combined_loss
     model.load_state_dict(torch.load(name+".pth", map_location=device))
     model.eval()
+
     test_loss = 0
     dice_per_class_total = np.zeros((5,))
 
@@ -104,19 +106,25 @@ def test_2D(model,test_loader,name):
 
 
 def test_3D(model, X_test_3D, y_test_3D, name):
-   
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    device = torch.device("cpu")
     model.to(device)
     model.load_state_dict(torch.load(name+".pth", map_location=device))
     model.eval()
   
     dice = torch.zeros(5).to(device)
-    for i in range(len(X_test_3D)):
-        target = convert_mask_to_class(y_test_3D[i].to(device))
-        pred = model.forward_volume(X_test_3D[i].to(device))
-        dice += dice_per_class_3D(pred, target)
+    hd = torch.zeros(5).to(device)
+    assd = torch.zeros(5).to(device)
     
-    return dice.cpu()/len(X_test_3D)
+    with torch.no_grad():
+        for i in range(len(X_test_3D)):
+            target = convert_mask_to_class(y_test_3D[i].to(device))
+            pred = model.forward_volume(X_test_3D[i].to(device))
+            dice += dice_per_class_3D(pred, target)
+            hd += hausdorff_distance(pred, target)
+            assd += ASSD(pred, target)
+    
+    return dice/len(X_test_3D), hd/len(X_test_3D), assd/len(X_test_3D)
 
 
 

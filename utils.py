@@ -182,7 +182,6 @@ def show_input_mask(input_path, output_path, slice_idx):
 
     plt.show()
 
-
 def convert_mask_to_class(mask):
     """
     mask: Tensor de n'importe quelle dimension contenant les valeurs [0, 80, 160, 240, 255]
@@ -448,7 +447,6 @@ def overlay_cam_multi(image, cams, titles=None):
 def saliency_map(model, image, class_idx):
     image = image.clone().detach().requires_grad_(True)
     model.eval()
-
     outputs = model(image)
     probs = F.softmax(outputs, dim=1)
 

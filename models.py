@@ -163,13 +163,17 @@ class Attention_block(nn.Module):
 
         self.relu = nn.ReLU(inplace=True)
 
-    def forward(self, g, x):
+    def forward(self, g, x, return_attention=False):
         g1 = self.W_g(g)
         x1 = self.W_x(x)
         psi = self.relu(g1 + x1)
         psi = self.psi(psi)
         out = x * psi
-        return out
+
+        if return_attention:
+            return out, psi
+        else:
+            return out
 
 
 class AttU_Net(nn.Module):
@@ -215,7 +219,7 @@ class AttU_Net(nn.Module):
 
         # self.active = torch.nn.Sigmoid()
 
-    def forward(self, x):
+    def forward(self, x, return_attentions=False):
 
         e1 = self.Conv1(x)
 
@@ -234,30 +238,44 @@ class AttU_Net(nn.Module):
         # print(x5.shape)
         d5 = self.Up5(e5)
         # print(d5.shape)
-        x4 = self.Att5(g=d5, x=e4)
+        if return_attentions:
+            x4, psi1 = self.Att5(g=d5, x=e4, return_attention=True)
+        else:
+            x4 = self.Att5(g=d5, x=e4)
         d5 = torch.cat((x4, d5), dim=1)
         d5 = self.Up_conv5(d5)
 
         d4 = self.Up4(d5)
-        x3 = self.Att4(g=d4, x=e3)
+        if return_attentions:
+            x3, psi2 = self.Att4(g=d4, x=e3, return_attention=True)
+        else:
+            x3 = self.Att4(g=d4, x=e3)
         d4 = torch.cat((x3, d4), dim=1)
         d4 = self.Up_conv4(d4)
 
         d3 = self.Up3(d4)
-        x2 = self.Att3(g=d3, x=e2)
+        if return_attentions:
+            x2, psi3 = self.Att3(g=d3, x=e2, return_attention=True)
+        else:
+            x2 = self.Att3(g=d3, x=e2)
         d3 = torch.cat((x2, d3), dim=1)
         d3 = self.Up_conv3(d3)
 
         d2 = self.Up2(d3)
-        x1 = self.Att2(g=d2, x=e1)
+        if return_attentions:
+            x1, psi4 = self.Att2(g=d2, x=e1, return_attention=True)
+        else:
+            x1 = self.Att2(g=d2, x=e1)
         d2 = torch.cat((x1, d2), dim=1)
         d2 = self.Up_conv2(d2)
 
         out = self.Conv(d2)
 
         #  out = self.active(out)
-
-        return out
+        if return_attentions:
+            return out, [psi1, psi2, psi3, psi4]
+        else:
+            return out
     
     @torch.no_grad()
     def forward_volume(self,x):
